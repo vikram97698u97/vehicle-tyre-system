@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>View Vehicle Data</title>
+<style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f0f4f8;
+    padding: 30px;
+    color: #333;
+  }
+
+  h2, h3 {
+    color: #2c3e50;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 20px;
+    background: #fff;
+    border-radius: 10px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(0,0,0,0.1);
+  }
+
+  th, td {
+    padding: 12px 16px;
+    text-align: left;
+    border-bottom: 1px solid #e0e0e0;
+  }
+
+  tr:nth-child(even) {
+    background-color: #f9f9f9;
+  }
+
+  th {
+    background-color: #3498db;
+    color: white;
+  }
+
+  button {
+    background-color: #3498db;
+    color: white;
+    border: none;
+    padding: 8px 14px;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: background-color 0.3s ease;
+  }
+
+  button:hover {
+    background-color: #2980b9;
+  }
+
+  input, textarea {
+    width: 100%;
+    max-width: 500px;
+    padding: 10px;
+    margin: 8px 0 15px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+  }
+
+  #editForm {
+    background: #ffffff;
+    padding: 20px;
+    border-radius: 10px;
+    box-shadow: 0 0 10px rgba(0,0,0,0.05);
+    max-width: 600px;
+    margin-top: 20px;
+  }
+
+  #tableContainer {
+    overflow-x: auto;
+  }
+
+  .button-group {
+    margin-top: 20px;
+  }
+
+  .button-group button {
+    margin-right: 10px;
+  }
+
+  @media (max-width: 600px) {
+    input, textarea {
+      width: 100%;
+    }
+
+    table, th, td {
+      font-size: 14px;
+    }
+
+    button {
+      padding: 6px 10px;
+      font-size: 14px;
+    }
+  }
+</style>
+
+</head>
+<body>
+  <h2>Data for Vehicle: <span id="vehicleNo"></span></h2>
+  <div id="tableContainer"></div>
+
+  <h3 id="editHeading" style="display:none;">Edit Row</h3>
+  <form id="editForm" style="display:none;">
+    <input type="date" name="date" required />
+    <input type="text" name="driver" placeholder="Driver Name" required />
+    <input type="text" name="contact" placeholder="Contact No." required />
+    <input type="text" name="vehicle" placeholder="Vehicle Type/No." required />
+    <input type="number" name="fuel" placeholder="Fuel (L)" required />
+    <input type="text" name="location" placeholder="Location" required />
+    <input type="text" name="work" placeholder="Other Work" />
+    <textarea name="notes" placeholder="Notes"></textarea>
+    <button type="submit">Update</button>
+    <button type="button" onclick="cancelEdit()">Cancel</button>
+  </form>
+
+  <button onclick="downloadPDF()">Download PDF</button>
+  <button onclick="window.location.href='add.html?vehicle=' + vehicleNo">+ Add More Data</button>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    const { jsPDF } = window.jspdf;
+    const urlParams = new URLSearchParams(window.location.search);
+    const vehicleNo = urlParams.get("vehicle");
+    document.getElementById("vehicleNo").textContent = vehicleNo;
+
+    const tableContainer = document.getElementById("tableContainer");
+    const editForm = document.getElementById("editForm");
+    const editHeading = document.getElementById("editHeading");
+    const formFields = editForm.elements;
+    let editingIndex = null;
+
+    let dataRows = JSON.parse(localStorage.getItem("vehicleData")) || {};
+    let rows = dataRows[vehicleNo] || [];
+    const headers = ["Date", "Driver Name", "Contact", "Vehicle", "Fuel", "Location", "Work", "Notes"];
+
+    function renderTable() {
+      let html = "<table><thead><tr>";
+      headers.forEach(h => html += `<th>${h}</th>`);
+      html += "<th>Actions</th></tr></thead><tbody>";
+      rows.forEach((r, idx) => {
+        html += "<tr>";
+        r.forEach(cell => html += `<td>${cell}</td>`);
+        html += `<td><button onclick="startEdit(${idx})">Edit</button></td>`;
+        html += "</tr>";
+      });
+      html += "</tbody></table>";
+      tableContainer.innerHTML = html;
+    }
+
+    function startEdit(index) {
+      editingIndex = index;
+      const rowData = rows[index];
+      formFields.date.value = rowData[0];
+      formFields.driver.value = rowData[1];
+      formFields.contact.value = rowData[2];
+      formFields.vehicle.value = rowData[3];
+      formFields.fuel.value = rowData[4];
+      formFields.location.value = rowData[5];
+      formFields.work.value = rowData[6];
+      formFields.notes.value = rowData[7];
+      editHeading.style.display = "block";
+      editForm.style.display = "block";
+    }
+
+    function cancelEdit() {
+      editingIndex = null;
+      editHeading.style.display = "none";
+      editForm.style.display = "none";
+    }
+
+    editForm.addEventListener("submit", function (e) {
+      e.preventDefault();
+      if (editingIndex === null) return;
+
+      const updatedRow = [
+        formFields.date.value,
+        formFields.driver.value,
+        formFields.contact.value,
+        formFields.vehicle.value,
+        formFields.fuel.value,
+        formFields.location.value,
+        formFields.work.value,
+        formFields.notes.value
+      ];
+
+      rows[editingIndex] = updatedRow;
+      dataRows[vehicleNo] = rows;
+      localStorage.setItem("vehicleData", JSON.stringify(dataRows));
+      cancelEdit();
+      renderTable();
+    });
+
+    function downloadPDF() {
+      const doc = new jsPDF();
+      let y = 10;
+      doc.text(`Vehicle: ${vehicleNo}`, 10, y);
+      y += 10;
+      headers.forEach((h, i) => doc.text(h, 10 + i * 25, y));
+      y += 10;
+      rows.forEach(row => {
+        row.forEach((cell, i) => doc.text(String(cell), 10 + i * 25, y));
+        y += 10;
+      });
+      doc.save(`${vehicleNo}_data.pdf`);
+    }
+
+    renderTable();
+  </script>
+</body>
+</html>

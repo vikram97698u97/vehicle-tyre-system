@@ -1,0 +1,102 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Add Vehicle Data</title>
+  <style>
+  body {
+    font-family: "Segoe UI", sans-serif;
+    background: #f7f9fb;
+    padding: 40px;
+    color: #2c3e50;
+  }
+
+  h2 {
+    text-align: center;
+    color: #34495e;
+    margin-bottom: 30px;
+  }
+
+  form {
+    background: #fff;
+    padding: 30px;
+    max-width: 600px;
+    margin: 0 auto;
+    border-radius: 10px;
+    box-shadow: 0 10px 20px rgba(0,0,0,0.07);
+  }
+
+  input, textarea, select {
+    width: 100%;
+    padding: 12px;
+    margin-top: 12px;
+    margin-bottom: 20px;
+    border: 1px solid #ccc;
+    border-radius: 6px;
+    font-size: 16px;
+  }
+
+  button {
+    background-color: #2980b9;
+    color: white;
+    border: none;
+    padding: 12px 20px;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 16px;
+    transition: background 0.3s ease;
+  }
+
+  button:hover {
+    background-color: #21689b;
+  }
+
+  @media (max-width: 600px) {
+    form {
+      padding: 20px;
+    }
+
+    input, textarea {
+      font-size: 14px;
+    }
+  }
+</style>
+
+</head>
+<body>
+  <h2>Add Data for Vehicle: <span id="vehicleNo"></span></h2>
+  <form id="vehicleForm">
+    <input type="date" name="date" required />
+    <input type="text" name="driver" placeholder="Driver Name" required />
+    <input type="text" name="contact" placeholder="Contact No." required />
+    <input type="text" name="vehicle" placeholder="Vehicle Type/No." required />
+    <input type="number" name="fuel" placeholder="Fuel Consumed (L)" required />
+    <input type="text" name="location" placeholder="Location" required />
+    <input type="text" name="work" placeholder="Other Work" />
+    <textarea name="notes" placeholder="Notes"></textarea>
+    <button type="submit">Submit</button>
+  </form>
+
+  <script>
+    const urlParams = new URLSearchParams(window.location.search);
+    const vehicleNo = urlParams.get("vehicle");
+    const form = document.getElementById("vehicleForm");
+    const dataRows = JSON.parse(localStorage.getItem("vehicleData")) || {};
+    document.getElementById("vehicleNo").textContent = vehicleNo;
+
+    form.addEventListener("submit", function (e) {
+      e.preventDefault();
+      const formData = new FormData(form);
+      const row = [];
+      for (const key of formData.keys()) {
+        row.push(formData.get(key));
+      }
+      if (!dataRows[vehicleNo]) dataRows[vehicleNo] = [];
+      dataRows[vehicleNo].push(row);
+      localStorage.setItem("vehicleData", JSON.stringify(dataRows));
+      alert("Data Saved!");
+      form.reset();
+    });
+  </script>
+</body>
+</html>

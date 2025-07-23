@@ -1,0 +1,208 @@
+<!-- Replace full HTML content with this -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tyre Section</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+      background: #f0f2f5;
+    }
+
+    h1 {
+      text-align: center;
+      color: #333;
+    }
+
+    .form-container, .card-container {
+      max-width: 800px;
+      margin: auto;
+      background: white;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+      margin-top: 20px;
+    }
+
+    .tyre-group {
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      background-color: #fafafa;
+    }
+
+    input {
+      width: calc(100% - 20px);
+      margin: 5px 0;
+      padding: 10px;
+      border-radius: 5px;
+      border: 1px solid #ccc;
+    }
+
+    button {
+      padding: 10px 15px;
+      border: none;
+      background-color: #007bff;
+      color: white;
+      border-radius: 6px;
+      margin-right: 10px;
+      cursor: pointer;
+    }
+
+    .add-btn {
+      background-color: #28a745;
+    }
+
+    .card {
+      background-color: #fff;
+      padding: 15px;
+      border-radius: 8px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+      margin-bottom: 15px;
+    }
+
+    .card h3 {
+      margin: 0;
+      color: #333;
+    }
+
+    .btn-group {
+      margin-top: 10px;
+    }
+
+    .edit-btn {
+      background-color: orange;
+      color: white;
+      padding: 8px 12px;
+      border-radius: 5px;
+    }
+  </style>
+</head>
+<body>
+  <h1>Tyre Section - Add / Edit Tyres</h1>
+
+  <div class="form-container">
+    <input type="text" id="vehicleNo" placeholder="Enter Vehicle No.">
+    <div id="tyreContainer"></div>
+    <button onclick="addTyre()" class="add-btn">+ Add Tyre</button>
+    <button onclick="saveTyreData()">Save / Update</button>
+  </div>
+
+  <div class="card-container" id="cardContainer">
+    <h2>Saved Vehicles</h2>
+    <!-- Cards will be appended here -->
+  </div>
+  <a href="index.html">
+      <button style="
+        padding: 12px 24px;
+        background-color: #007bff;
+        color: white;
+        border: none;
+        border-radius: 6px;
+        font-size: 16px;
+        cursor: pointer;
+        margin-top: 20px;">
+        Home
+      </button>
+    </a>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script>
+    function addTyre(data = {}) {
+      const container = document.createElement("div");
+      container.className = "tyre-group";
+
+      container.innerHTML = `
+        <input type="text" placeholder="Tyre Company" value="${data.company || ''}" class="tyre-company">
+        <input type="text" placeholder="Tyre Name" value="${data.name || ''}" class="tyre-name">
+        <input type="text" placeholder="Tyre Number" value="${data.number || ''}" class="tyre-number">
+        <button onclick="this.parentElement.remove()">Remove</button>
+      `;
+
+      document.getElementById("tyreContainer").appendChild(container);
+    }
+
+    function saveTyreData() {
+      const vehicleNo = document.getElementById("vehicleNo").value.trim();
+      if (!vehicleNo) return alert("Please enter vehicle number");
+
+      const tyres = [...document.querySelectorAll(".tyre-group")].map(group => ({
+        company: group.querySelector(".tyre-company").value,
+        name: group.querySelector(".tyre-name").value,
+        number: group.querySelector(".tyre-number").value
+      }));
+
+      if (tyres.length === 0) return alert("Add at least one tyre");
+
+      const data = { vehicleNo, tyres };
+      localStorage.setItem(`tyre_${vehicleNo}`, JSON.stringify(data));
+      alert("Tyre data saved!");
+      location.reload();
+    }
+
+    function editTyreData(vehicleNo) {
+      const data = JSON.parse(localStorage.getItem(`tyre_${vehicleNo}`));
+      document.getElementById("vehicleNo").value = data.vehicleNo;
+      document.getElementById("tyreContainer").innerHTML = "";
+      data.tyres.forEach(tyre => addTyre(tyre));
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }
+
+    function viewData(vehicleNo) {
+      const data = JSON.parse(localStorage.getItem(`tyre_${vehicleNo}`));
+      let message = `Tyre data for ${vehicleNo}:\n\n`;
+      data.tyres.forEach((tyre, i) => {
+        message += `Tyre ${i + 1}:\nCompany: ${tyre.company}\nName: ${tyre.name}\nNumber: ${tyre.number}\n\n`;
+      });
+      alert(message);
+    }
+
+    async function downloadPDF(vehicleNo) {
+      const data = JSON.parse(localStorage.getItem(`tyre_${vehicleNo}`));
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.text(`Tyre Details for ${vehicleNo}`, 10, 10);
+
+      let y = 20;
+      data.tyres.forEach((tyre, i) => {
+        doc.text(`Tyre ${i + 1}`, 10, y);
+        doc.text(`Company: ${tyre.company}`, 10, y + 10);
+        doc.text(`Name: ${tyre.name}`, 10, y + 20);
+        doc.text(`Number: ${tyre.number}`, 10, y + 30);
+        y += 40;
+      });
+
+      doc.save(`${vehicleNo}_tyres.pdf`);
+    }
+
+    function loadCards() {
+      const container = document.getElementById("cardContainer");
+      container.innerHTML = "<h2>Saved Vehicles</h2>";
+
+      Object.keys(localStorage).forEach(key => {
+        if (key.startsWith("tyre_")) {
+          const data = JSON.parse(localStorage.getItem(key));
+          const card = document.createElement("div");
+          card.className = "card";
+
+          card.innerHTML = `
+            <h3>${data.vehicleNo}</h3>
+            <div class="btn-group">
+              <button onclick="viewData('${data.vehicleNo}')">View</button>
+              <button onclick="downloadPDF('${data.vehicleNo}')">Download</button>
+              <button class="edit-btn" onclick="editTyreData('${data.vehicleNo}')">✏️ Edit</button>
+            </div>
+          `;
+
+          container.appendChild(card);
+        }
+      });
+    }
+
+    loadCards();
+  </script>
+</body>
+</html>
