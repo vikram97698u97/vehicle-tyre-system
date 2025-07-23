@@ -132,8 +132,9 @@
     </a>
 
     <button class="add-btn" onclick="addVehicle()">+ Add Vehicle</button>
-    <div id="vehicleCards"></div>
   </div>
+    <div id="vehicleCards"></div>
+  
   <script>
     const vehicleCards = document.getElementById("vehicleCards");
     const dataRows = JSON.parse(localStorage.getItem("vehicleData")) || {};
