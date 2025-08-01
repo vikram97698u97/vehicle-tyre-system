@@ -1,0 +1,272 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <title>Login / Signup</title>
+  <style>
+
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background: linear-gradient(135deg, #667eea, #764ba2);
+      color: #fff;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      height: 100vh;
+    }
+    .container {
+      background-color: rgba(255, 255, 255, 0.1);
+      padding: 40px 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      backdrop-filter: blur(10px);
+      width: 90%;
+      max-width: 400px;
+    }
+    .container h2 {
+      text-align: center;
+      margin-bottom: 20px;
+      font-size: 24px;
+    }
+    input[type="email"],
+    input[type="password"],
+    input[type="text"] {
+      width: 100%;
+      padding: 12px 15px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 8px;
+      background-color: rgba(255,255,255,0.2);
+      color: #fff;
+      font-size: 16px;
+      outline: none;
+    }
+    input::placeholder {
+      color: #eee;
+    }
+    button {
+      width: 100%;
+      padding: 12px;
+      margin-top: 10px;
+      border: none;
+      border-radius: 8px;
+      background-color: #00c9a7;
+      color: #fff;
+      font-weight: bold;
+      font-size: 16px;
+      cursor: pointer;
+    }
+    button:hover {
+      background-color: #00b497;
+    }
+    #user-status {
+      text-align: center;
+      margin-top: 15px;
+      font-size: 15px;
+    }
+    /* Modal Styles */
+    .modal {
+      display: none;
+      position: fixed;
+      z-index: 1000;
+      left: 0;
+      top: 0;
+      width: 100%;
+      height: 100%;
+      background-color: rgba(0,0,0,0.7);
+      overflow: auto;
+    }
+    .modal-content {
+      background-color: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(10px);
+      margin: 10% auto;
+      padding: 30px;
+      border-radius: 15px;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+      width: 90%;
+      max-width: 400px;
+      color: white;
+    }
+    .modal h3 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    @media (max-width: 480px) {
+    .container {
+      padding: 30px 20px;
+    }
+    h2 {
+      font-size: 20px;
+    }
+    input, button {
+      font-size: 14px;
+      padding: 10px;
+    }
+  }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h2>Sign Up</h2>
+    <input type="email" id="signup-email" placeholder="Email">
+    <input type="password" id="signup-password" placeholder="Password">
+    <button onclick="signUp()">Sign Up</button>
+
+    <h2>Login</h2>
+    <input type="email" id="login-email" placeholder="Email">
+    <input type="password" id="login-password" placeholder="Password">
+    <!-- Insert this under the Login button -->
+    
+
+    <button onclick="login()">Login</button>
+
+    <button onclick="logout()">Logout</button>
+    <button onclick="resetPassword()">Forgot Password?</button>
+
+    <p id="user-status">Loading...</p>
+  </div>
+
+  <!-- Profile Information Modal -->
+  <div id="profileModal" class="modal">
+    <div class="modal-content">
+      <h3>Complete Your Profile</h3>
+      <p>Please provide your transport company details:</p>
+      <input type="text" id="transportName" placeholder="Transport Company Name">
+      <input type="text" id="ownerName" placeholder="Owner Name">
+      <button onclick="saveProfileInfo()">Save & Continue</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import {
+      getAuth,
+      createUserWithEmailAndPassword,
+      signInWithEmailAndPassword,
+      signOut,
+      onAuthStateChanged,
+      sendPasswordResetEmail
+    } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDAlk_K8p8Of8Ne6Jpcl2QqXTtm95NgG7o",
+      authDomain: "transport-dashboard-ad69a.firebaseapp.com",
+      databaseURL: "https://transport-dashboard-ad69a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "transport-dashboard-ad69a",
+      storageBucket: "transport-dashboard-ad69a.appspot.com",
+      messagingSenderId: "526889676196",
+      appId: "1:526889676196:web:66032c80a4aede690ae531",
+      measurementId: "G-7F9R7HJYDH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const db = getDatabase(app);
+
+    window.signUp = function () {
+      const email = document.getElementById("signup-email").value;
+      const password = document.getElementById("signup-password").value;
+      createUserWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          // Show the profile modal for new users
+          document.getElementById("profileModal").style.display = "block";
+        })
+        .catch((error) => {
+          alert("Signup Error: " + error.message);
+        });
+    };
+
+    window.login = function () {
+      const email = document.getElementById("login-email").value;
+      const password = document.getElementById("login-password").value;
+      signInWithEmailAndPassword(auth, email, password)
+        .then((userCredential) => {
+          // Check if user has profile info
+          const userId = userCredential.user.uid;
+          const userProfileRef = ref(db, `users/${userId}/profile`);
+          
+          get(userProfileRef).then((snapshot) => {
+            if (!snapshot.exists()) {
+              // If no profile exists, show the profile modal
+              document.getElementById("profileModal").style.display = "block";
+            } else {
+              // Profile exists, redirect to home
+              window.location.href = "home.html";
+            }
+          });
+        })
+        .catch((error) => {
+          alert("Login Error: " + error.message);
+        });
+    };
+
+    window.saveProfileInfo = function() {
+      const transportName = document.getElementById("transportName").value.trim();
+      const ownerName = document.getElementById("ownerName").value.trim();
+      
+      if (!transportName || !ownerName) {
+        alert("Please fill in all fields");
+        return;
+      }
+      
+      const user = auth.currentUser;
+      if (user) {
+        const userProfileRef = ref(db, `users/${user.uid}/profile`);
+        set(userProfileRef, {
+          transportName: transportName,
+          ownerName: ownerName,
+          createdAt: new Date().toISOString()
+        }).then(() => {
+          // Hide modal and redirect
+          document.getElementById("profileModal").style.display = "none";
+          window.location.href = "home.html";
+        }).catch(error => {
+          alert("Error saving profile: " + error.message);
+        });
+      }
+    };
+
+    window.logout = function () {
+      signOut(auth).then(() => {
+        document.getElementById("user-status").innerText = "Logged out";
+      });
+    };
+
+    window.resetPassword = function () {
+      const email = prompt("Enter your registered email to reset password:");
+      if (!email) return;
+      sendPasswordResetEmail(auth, email)
+        .then(() => {
+          alert("Password reset link sent! Check your email.");
+        })
+        .catch((error) => {
+          alert("Reset Error: " + error.message);
+        });
+    };
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        document.getElementById("user-status").innerText = "Logged in as: " + user.email;
+        
+        // Check if user has profile info
+        const userProfileRef = ref(db, `users/${user.uid}/profile`);
+        get(userProfileRef).then((snapshot) => {
+          if (!snapshot.exists()) {
+            // If no profile exists, show the profile modal
+            document.getElementById("profileModal").style.display = "block";
+          }
+        });
+      } else {
+        document.getElementById("user-status").innerText = "Not logged in";
+      }
+    });
+  </script>
+
+  
+</body>
+</html>

@@ -1,0 +1,413 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Thread Booking</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      margin: 0;
+      padding: 0;
+      background-color: #F5F5F5;
+      color: #111111;
+    }
+
+    .container {
+      padding: 1rem;
+      max-width: 900px;
+      margin: auto;
+    }
+
+    .container h1 {
+      color: #2E8B57;
+      text-align: center;
+      margin-bottom: 1.5rem;
+    }
+
+    form {
+      background-color: white;
+      padding: 1.5rem;
+      border-radius: 12px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+      margin-bottom: 2rem;
+    }
+
+    form input,
+    form button,
+    form select {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 1rem;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+      font-size: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5rem;
+      font-weight: 500;
+    }
+
+    .form-group {
+      margin-bottom: 1rem;
+    }
+
+    .actions button {
+      background-color: #43B97F;
+      color: white;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      padding: 10px 16px;
+    }
+
+    .actions button:hover {
+      background-color: #3ba06f;
+    }
+
+    .toolbar {
+      display: flex;
+      justify-content: space-between;
+      margin-bottom: 1rem;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+
+    .toolbar input {
+      flex: 1;
+      min-width: 200px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+
+    .toolbar button {
+      padding: 10px 16px;
+      border: none;
+      background-color: #43B97F;
+      color: white;
+      border-radius: 6px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    .toolbar button:hover {
+      background-color: #3ba06f;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: white;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    th,
+    td {
+      padding: 0.75rem;
+      text-align: left;
+      border-bottom: 1px solid #ddd;
+    }
+
+    th {
+      background-color: #2E8B57;
+      color: white;
+    }
+
+    td button {
+      padding: 6px 10px;
+      margin-right: 5px;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 14px;
+    }
+
+    .edit-btn {
+      background-color: #f4b400;
+      color: white;
+    }
+
+    .delete-btn {
+      background-color: #db4437;
+      color: white;
+    }
+
+    @media (max-width: 768px) {
+      .toolbar {
+        flex-direction: column;
+      }
+
+      .toolbar > div {
+        display: flex;
+        gap: 10px;
+      }
+
+      .toolbar button {
+        flex: 1;
+      }
+
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      
+      thead tr {
+        position: absolute;
+        top: -9999px;
+        left: -9999px;
+      }
+      
+      tr {
+        border: 1px solid #ccc;
+        margin-bottom: 1rem;
+      }
+      
+      td {
+        border: none;
+        border-bottom: 1px solid #eee;
+        position: relative;
+        padding-left: 50%;
+        text-align: right;
+      }
+      
+      td:before {
+        position: absolute;
+        top: 12px;
+        left: 12px;
+        width: 45%;
+        padding-right: 10px;
+        white-space: nowrap;
+        text-align: left;
+        font-weight: bold;
+      }
+      
+      td:nth-of-type(1):before { content: "Vehicle No"; }
+      td:nth-of-type(2):before { content: "Company"; }
+      td:nth-of-type(3):before { content: "Size"; }
+      td:nth-of-type(4):before { content: "Weight"; }
+      td:nth-of-type(5):before { content: "Date"; }
+      td:nth-of-type(6):before { content: "Actions"; }
+    }
+  </style>
+</head>
+
+<body>
+  <div id="navbar"></div>
+
+  <div class="container">
+    <h1>Thread Booking Management</h1>
+    <form id="bookingForm">
+      <div class="form-group">
+        <label for="vehicleNo">Vehicle Number</label>
+        <input type="text" id="vehicleNo" placeholder="Enter Vehicle Number" required />
+      </div>
+      <div class="form-group">
+        <label for="threadCompany">Thread Company</label>
+        <input type="text" id="threadCompany" placeholder="Enter Thread Company" required />
+      </div>
+      <div class="form-group">
+        <label for="threadSize">Thread Size</label>
+        <input type="text" id="threadSize" placeholder="Enter Thread Size" required />
+      </div>
+      <div class="form-group">
+        <label for="weight">Weight (tons)</label>
+        <input type="number" id="weight" placeholder="Enter Weight" required />
+      </div>
+      <div class="form-group">
+        <label for="bookingDate">Booking Date</label>
+        <input type="date" id="bookingDate" required />
+      </div>
+      <div class="actions">
+        <button type="submit">Add Booking</button>
+      </div>
+    </form>
+
+    <div class="toolbar">
+      <input type="text" id="searchInput" placeholder="Search by Vehicle No, Company, or Size...">
+      <div>
+        <button id="sortBtn">Sort by Date</button>
+        <button id="downloadExcel">Export to Excel</button>
+      </div>
+    </div>
+
+    <table id="bookingTable">
+      <thead>
+        <tr>
+          <th>Vehicle No</th>
+          <th>Company</th>
+          <th>Size</th>
+          <th>Weight (tons)</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDAlk_K8p8Of8Ne6Jpcl2QqXTtm95NgG7o",
+      authDomain: "transport-dashboard-ad69a.firebaseapp.com",
+      databaseURL: "https://transport-dashboard-ad69a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "transport-dashboard-ad69a",
+      storageBucket: "transport-dashboard-ad69a.appspot.com",
+      messagingSenderId: "526889676196",
+      appId: "1:526889676196:web:66032c80a4aede690ae531",
+      measurementId: "G-7F9R7HJYDH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase();
+    const auth = getAuth();
+
+    const bookingForm = document.getElementById("bookingForm");
+    const tableBody = document.querySelector("#bookingTable tbody");
+    const searchInput = document.getElementById("searchInput");
+    const sortBtn = document.getElementById("sortBtn");
+    const exportBtn = document.getElementById("downloadExcel");
+
+    let bookingRef;
+    let bookingData = [];
+
+    onAuthStateChanged(auth, user => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const uid = user.uid;
+      bookingRef = ref(db, `users/${uid}/threadBookings`);
+
+      onValue(bookingRef, snapshot => {
+        bookingData = [];
+        snapshot.forEach(child => {
+          bookingData.push({ ...child.val(), key: child.key });
+        });
+        renderTable(bookingData);
+      });
+
+      bookingForm.addEventListener("submit", e => {
+        e.preventDefault();
+        const data = {
+          vehicleNo: bookingForm.vehicleNo.value.trim(),
+          threadCompany: bookingForm.threadCompany.value.trim(),
+          threadSize: bookingForm.threadSize.value.trim(),
+          weight: bookingForm.weight.value.trim(),
+          bookingDate: bookingForm.bookingDate.value,
+          createdAt: Date.now()
+        };
+        if (!data.vehicleNo || !data.threadCompany || !data.threadSize || !data.weight || !data.bookingDate) return;
+        push(bookingRef, data);
+        bookingForm.reset();
+      });
+    });
+
+    function renderTable(dataArr) {
+      tableBody.innerHTML = "";
+      dataArr.forEach(item => {
+        const row = document.createElement("tr");
+        row.innerHTML = `
+          <td>${item.vehicleNo}</td>
+          <td>${item.threadCompany}</td>
+          <td>${item.threadSize}</td>
+          <td>${item.weight}</td>
+          <td>${item.bookingDate}</td>
+          <td>
+            <button class="edit-btn" onclick="editBooking('${item.key}')">Edit</button>
+            <button class="delete-btn" onclick="deleteBooking('${item.key}')">Delete</button>
+          </td>`;
+        row.dataset.key = item.key;
+        tableBody.appendChild(row);
+      });
+    }
+
+    window.deleteBooking = key => {
+      if (confirm("Are you sure you want to delete this booking?")) {
+        const uid = auth.currentUser?.uid;
+        if (!uid) return;
+        remove(ref(db, `users/${uid}/threadBookings/${key}`));
+      }
+    };
+
+    window.editBooking = key => {
+      const uid = auth.currentUser?.uid;
+      if (!uid) return;
+
+      const item = bookingData.find(b => b.key === key);
+      const vehicleNo = prompt("Edit Vehicle No", item.vehicleNo);
+      const company = prompt("Edit Company", item.threadCompany);
+      const size = prompt("Edit Size", item.threadSize);
+      const weight = prompt("Edit Weight", item.weight);
+      const date = prompt("Edit Date", item.bookingDate);
+      if (vehicleNo && company && size && weight && date) {
+        update(ref(db, `users/${uid}/threadBookings/${key}`), {
+          vehicleNo,
+          threadCompany: company,
+          threadSize: size,
+          weight,
+          bookingDate: date
+        });
+      }
+    };
+
+    searchInput.addEventListener("input", () => {
+      const value = searchInput.value.toLowerCase();
+      renderTable(bookingData.filter(item => {
+        return (
+          item.vehicleNo.toLowerCase().includes(value) ||
+          item.threadCompany.toLowerCase().includes(value) ||
+          item.threadSize.toLowerCase().includes(value)
+        );
+      }));
+    });
+
+    sortBtn.addEventListener("click", () => {
+      bookingData.sort((a, b) => new Date(b.bookingDate) - new Date(a.bookingDate));
+      renderTable(bookingData);
+    });
+
+    exportBtn.addEventListener("click", () => {
+      const worksheet = XLSX.utils.json_to_sheet(bookingData.map(({ key, ...rest }) => rest));
+      const workbook = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(workbook, worksheet, "ThreadBookings");
+      XLSX.writeFile(workbook, "thread_bookings.xlsx");
+    });
+
+    // Make logout function available globally
+    window.logout = function() {
+      signOut(auth).then(() => {
+        window.location.href = "index.html";
+      }).catch(error => {
+        alert("Error logging out: " + error.message);
+      });
+    };
+
+    window.toggleMenu = function() {
+      document.getElementById("navLinks").classList.toggle("show");
+    };
+  </script>
+
+  <!-- Load Navbar -->
+  <script>
+    fetch("navbar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("navbar").innerHTML = html;
+      });
+  </script>
+</body>
+
+</html>

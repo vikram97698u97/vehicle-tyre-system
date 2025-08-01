@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Transport Dashboard - Home</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      font-family: 'Segoe UI', sans-serif;
+    }
+    body {
+      background: #f5f7fa;
+      padding: 0;
+      margin: 0;
+    }
+    .content-container {
+      padding: 20px;
+    }
+    .content-container h1 {
+      text-align: center;
+      margin-bottom: 20px;
+      color: #2E8B57;
+    }
+    .search-bar {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .search-bar input {
+      width: 300px;
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .section-container {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
+    }
+    .section {
+      flex: 1;
+      min-width: 300px;
+      background: white;
+      border-radius: 10px;
+      padding: 15px;
+      box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .section h2 {
+      margin-bottom: 10px;
+      color: #2E8B57;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    .vehicle-count {
+      background-color: #43B97F;
+      color: white;
+      border-radius: 50%;
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+    .card {
+      background: #e8f0fe;
+      border-left: 5px solid #43B97F;
+      margin: 10px 0;
+      padding: 10px;
+      border-radius: 6px;
+      position: relative;
+    }
+    .card button {
+      position: absolute;
+      top: 10px;
+      right: 10px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      font-size: 16px;
+      color: #555;
+    }
+    .add-form {
+      margin-bottom: 30px;
+      background: #fff;
+      padding: 15px;
+      border-radius: 10px;
+      box-shadow: 0 3px 5px rgba(0, 0, 0, 0.1);
+    }
+    .add-form input, .add-form select, .add-form button {
+      padding: 10px;
+      margin: 5px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+    }
+    .add-form button {
+      background: #43B97F;
+      color: white;
+      cursor: pointer;
+    }
+    .add-form button:hover {
+      background-color: #3ba06f;
+    }
+    @media (max-width: 768px) {
+      .section-container {
+        flex-direction: column;
+      }
+      .search-bar input {
+        width: 90%;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar"></div>
+
+  <div class="content-container">
+    <h1>Vehicle Status Dashboard</h1>
+
+    <div class="search-bar">
+      <input type="text" id="searchInput" placeholder="Search by Vehicle No, Location, or Status...">
+    </div>
+
+    <div class="add-form">
+      <input type="text" id="vehicleNo" placeholder="Vehicle No">
+      <input type="text" id="location" placeholder="Location">
+      <select id="status">
+        <option value="running">Running</option>
+        <option value="standing">Standing</option>
+        <option value="inwork">In Work</option>
+      </select>
+      <button onclick="addCard()">Add</button>
+    </div>
+
+    <div class="section-container">
+      <div class="section" id="running">
+        <h2>Running <span class="vehicle-count" id="running-count">0</span></h2>
+      </div>
+      <div class="section" id="standing">
+        <h2>Standing <span class="vehicle-count" id="standing-count">0</span></h2>
+      </div>
+      <div class="section" id="inwork">
+        <h2>In Work <span class="vehicle-count" id="inwork-count">0</span></h2>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getDatabase, ref, push, onValue, set, update, remove } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDAlk_K8p8Of8Ne6Jpcl2QqXTtm95NgG7o",
+      authDomain: "transport-dashboard-ad69a.firebaseapp.com",
+      databaseURL: "https://transport-dashboard-ad69a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "transport-dashboard-ad69a",
+      storageBucket: "transport-dashboard-ad69a.appspot.com",
+      messagingSenderId: "526889676196",
+      appId: "1:526889676196:web:66032c80a4aede690ae531",
+      measurementId: "G-7F9R7HJYDH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth();
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const uid = user.uid;
+      const homeRef = ref(db, `users/${uid}/home`);
+
+      // Initialize counters
+      let runningCount = 0;
+      let standingCount = 0;
+      let inworkCount = 0;
+
+      const renderCard = (data, key) => {
+        const div = document.createElement("div");
+        div.className = "card";
+        div.innerHTML = `
+          <strong>${data.vehicleNo}</strong><br>
+          Location: ${data.location}<br>
+          Status: ${data.status}
+          <button onclick="editCard('${key}', '${encodeURIComponent(JSON.stringify(data))}')">
+            <i class="fas fa-edit"></i>
+          </button>
+        `;
+        const statusSection = document.getElementById(data.status);
+        if (statusSection) statusSection.appendChild(div);
+
+        // Update counters based on status
+        if (data.status === "running") runningCount++;
+        else if (data.status === "standing") standingCount++;
+        else if (data.status === "inwork") inworkCount++;
+      };
+
+      onValue(homeRef, (snapshot) => {
+        const data = snapshot.val();
+        document.getElementById("running").innerHTML = "<h2>Running <span class='vehicle-count' id='running-count'>0</span></h2>";
+        document.getElementById("standing").innerHTML = "<h2>Standing <span class='vehicle-count' id='standing-count'>0</span></h2>";
+        document.getElementById("inwork").innerHTML = "<h2>In Work <span class='vehicle-count' id='inwork-count'>0</span></h2>";
+        
+        // Reset counters
+        runningCount = 0;
+        standingCount = 0;
+        inworkCount = 0;
+        
+        if (data) {
+          Object.entries(data).forEach(([key, item]) => renderCard(item, key));
+        }
+        
+        // Update counter displays
+        document.getElementById("running-count").textContent = runningCount;
+        document.getElementById("standing-count").textContent = standingCount;
+        document.getElementById("inwork-count").textContent = inworkCount;
+      });
+
+      window.addCard = () => {
+        const vehicleNo = document.getElementById("vehicleNo").value.trim();
+        const location = document.getElementById("location").value.trim();
+        const status = document.getElementById("status").value;
+        if (!vehicleNo || !location || !status) return alert("All fields required.");
+        push(homeRef, { vehicleNo, location, status });
+        
+        // Clear form fields after adding
+        document.getElementById("vehicleNo").value = "";
+        document.getElementById("location").value = "";
+      };
+
+      window.editCard = (key, rawData) => {
+        const item = JSON.parse(decodeURIComponent(rawData));
+        const vehicleNo = prompt("Edit Vehicle No", item.vehicleNo);
+        const location = prompt("Edit Location", item.location);
+        const status = prompt("Edit Status (running, standing, inwork)", item.status);
+        if (vehicleNo && location && status) {
+          update(ref(db, `users/${uid}/home/${key}`), { vehicleNo, location, status });
+        }
+      };
+
+      document.getElementById("searchInput").addEventListener("input", (e) => {
+        const term = e.target.value.toLowerCase();
+        document.querySelectorAll(".card").forEach((card) => {
+          card.style.display = card.innerText.toLowerCase().includes(term) ? "block" : "none";
+        });
+      });
+      
+      // Add logout functionality
+      window.logout = function() {
+        signOut(auth).then(() => {
+          window.location.href = "index.html";
+        }).catch(error => {
+          alert("Error logging out: " + error.message);
+        });
+      };
+      
+      // Add toggle menu functionality
+      window.toggleMenu = function() {
+        document.getElementById("navLinks").classList.toggle("show");
+      };
+    });
+  </script>
+
+  <script>
+    // Load navbar
+    fetch("navbar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("navbar").innerHTML = html;
+    });
+  </script>
+</body>
+</html>

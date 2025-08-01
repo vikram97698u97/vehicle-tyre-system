@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Vehicle & Driver Details</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css"/>
+  <style>
+    body {
+      background: #F5F5F5;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      color: #111111;
+      padding: 0;
+      margin: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 40px auto;
+      background: white;
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 10px #ccc;
+    }
+    h2, h3 {
+      text-align: center;
+      color: #2E8B57;
+    }
+    form label {
+      display: block;
+      margin-bottom: 5px;
+      font-weight: 500;
+    }
+    form input {
+      width: 100%;
+      padding: 10px;
+      margin-bottom: 14px;
+      border: 1px solid #ccc;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    form button, .download-btn {
+      background-color: #43B97F;
+      color: white;
+      padding: 10px 16px;
+      border: none;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      margin-right: 10px;
+    }
+    form button:hover, .download-btn:hover {
+      background-color: #3ba06f;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 30px;
+      background: white;
+    }
+    th, td {
+      border-bottom: 1px solid #ddd;
+      padding: 12px;
+      text-align: left;
+    }
+    th {
+      background-color: #2E8B57;
+      color: white;
+    }
+    .action-btn {
+      background-color: #43B97F;
+      color: white;
+      border: none;
+      padding: 6px 10px;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-right: 5px;
+    }
+    .action-btn:hover {
+      background-color: #3ba06f;
+    }
+    img.license-preview {
+      max-width: 100px;
+      max-height: 100px;
+      border-radius: 6px;
+      display: none;
+    }
+    @media(max-width: 600px){
+      table, thead, tbody, th, td, tr {
+        display: block;
+      }
+      td { margin-bottom: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar"></div>
+
+  <div class="container">
+    <h2>Vehicle and Driver Entry Form</h2>
+    <form id="vehicleDriverForm">
+      <label>Vehicle Number:</label>
+      <input type="text" id="vehicleNumber" placeholder="Enter Vehicle Number" required>
+      
+      <label>Vehicle Type:</label>
+      <input type="text" id="vehicleType" placeholder="Enter Vehicle Type" required>
+      
+      <label>Driver Name:</label>
+      <input type="text" id="driverName" placeholder="Enter Driver Name" required>
+      
+      <label>Driver License No.:</label>
+      <input type="text" id="driverLicense" placeholder="Enter Driver License No." required>
+      
+      <label>Driver Contact Number:</label>
+      <input type="number" id="contactNumber" placeholder="Enter Driver Contact Number" required>
+      
+      <label>License Image:</label>
+      <input type="file" id="licenseImage" accept="image/*">
+      <img id="licensePreview" class="license-preview">
+      
+      <button type="submit">Add Details</button>
+    </form>
+
+    <h3>View Vehicle & Driver Info</h3>
+    <button type="button" class="download-btn" onclick="downloadExcel()">Download Excel</button>
+
+    <table id="vehicleDriverTable">
+      <thead>
+        <tr>
+          <th>Vehicle Number</th>
+          <th>Type</th>
+          <th>Driver</th>
+          <th>License No.</th>
+          <th>Contact</th>
+          <th>License Image</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+    import { getAuth, onAuthStateChanged ,signOut } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+    import { getDatabase, ref, onValue, push, set, child } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-database.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDAlk_K8p8Of8Ne6Jpcl2QqXTtm95NgG7o",
+      authDomain: "transport-dashboard-ad69a.firebaseapp.com",
+      databaseURL: "https://transport-dashboard-ad69a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "transport-dashboard-ad69a",
+      storageBucket: "transport-dashboard-ad69a.appspot.com",
+      messagingSenderId: "526889676196",
+      appId: "1:526889676196:web:66032c80a4aede690ae531",
+      measurementId: "G-7F9R7HJYDH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const auth = getAuth(app);
+    const database = getDatabase(app);
+
+    const form = document.getElementById('vehicleDriverForm');
+    const tbody = document.querySelector('#vehicleDriverTable tbody');
+    const licenseInput = document.getElementById('licenseImage');
+    const licensePreview = document.getElementById('licensePreview');
+    let editKey = null;
+
+    
+    licenseInput.addEventListener("change", () => {
+      const file = licenseInput.files[0];
+      if (file && file.type.startsWith("image")) {
+        const reader = new FileReader();
+        reader.onload = () => {
+          licensePreview.src = reader.result;
+          licensePreview.style.display = "block";
+        };
+        reader.readAsDataURL(file);
+      } else {
+        licensePreview.style.display = "none";
+      }
+    });
+
+    
+    async function uploadToCloudinary(file) {
+      const url = `https://api.cloudinary.com/v1_1/doqapn15f/auto/upload`;
+      const preset = "payment-billing"; // Using the same preset as payment-billing
+
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("upload_preset", preset);
+
+      const res = await fetch(url, { method: "POST", body: formData });
+      const data = await res.json();
+      return data.secure_url;
+    }
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+        return;
+      }
+
+      const uid = user.uid;
+      const vehicleRef = ref(database, `users/${uid}/vehicles`);
+
+      onValue(vehicleRef, snapshot => {
+        tbody.innerHTML = '';
+        const data = snapshot.val() || {};
+        for (let key in data) {
+          const entry = data[key];
+          const row = document.createElement('tr');
+
+          ['vehicleNumber', 'vehicleType', 'driverName', 'driverLicense', 'contactNumber'].forEach(field => {
+            const td = document.createElement('td');
+            td.textContent = entry[field];
+            row.appendChild(td);
+          });
+
+          
+          const imgTd = document.createElement('td');
+          if (entry.licenseImageUrl) {
+            const imgLink = document.createElement('a');
+            imgLink.href = entry.licenseImageUrl;
+            imgLink.target = "_blank";
+            imgLink.textContent = "View";
+            imgTd.appendChild(imgLink);
+          } else {
+            imgTd.textContent = "—";
+          }
+          row.appendChild(imgTd);
+
+          
+          const actionsTd = document.createElement('td');
+          const editBtn = document.createElement('button');
+          editBtn.textContent = "Edit";
+          editBtn.className = "action-btn";
+          editBtn.onclick = () => loadEntryForEdit(key, entry);
+          actionsTd.appendChild(editBtn);
+          row.appendChild(actionsTd);
+
+          tbody.appendChild(row);
+        }
+
+        window.logout = function() {
+          signOut(auth).then(() => {
+            window.location.href = "index.html";
+          }).catch(error => {
+            alert("Error logging out: " + error.message);
+          });
+        };
+      });
+
+      form.addEventListener('submit', async function (e) {
+        e.preventDefault();
+
+        const vehicleNumber = document.getElementById('vehicleNumber').value;
+        const vehicleType = document.getElementById('vehicleType').value;
+        const driverName = document.getElementById('driverName').value;
+        const driverLicense = document.getElementById('driverLicense').value;
+        const contactNumber = document.getElementById('contactNumber').value;
+        
+        
+        let licenseImageUrl = "";
+        const file = licenseInput.files[0];
+        if (file) {
+          licenseImageUrl = await uploadToCloudinary(file);
+        } else if (editKey) {
+          
+          const existingData = snapshot.val()[editKey];
+          if (existingData && existingData.licenseImageUrl) {
+            licenseImageUrl = existingData.licenseImageUrl;
+          }
+        }
+
+        const entry = {
+          vehicleNumber,
+          vehicleType,
+          driverName,
+          driverLicense,
+          contactNumber,
+          licenseImageUrl,
+          timestamp: Date.now()
+        };
+
+        if (editKey) {
+          set(child(vehicleRef, editKey), entry);
+          editKey = null;
+        } else {
+          push(vehicleRef, entry);
+        }
+
+        form.reset();
+        licensePreview.style.display = "none";
+      });
+
+      function loadEntryForEdit(key, entry) {
+        document.getElementById('vehicleNumber').value = entry.vehicleNumber;
+        document.getElementById('vehicleType').value = entry.vehicleType;
+        document.getElementById('driverName').value = entry.driverName;
+        document.getElementById('driverLicense').value = entry.driverLicense;
+        document.getElementById('contactNumber').value = entry.contactNumber;
+        
+        
+        if (entry.licenseImageUrl) {
+          licensePreview.src = entry.licenseImageUrl;
+          licensePreview.style.display = "block";
+        } else {
+          licensePreview.style.display = "none";
+        }
+        
+        editKey = key;
+      }
+
+      window.downloadExcel = function () {
+        const table = document.getElementById("vehicleDriverTable");
+        const wb = XLSX.utils.table_to_book(table, { sheet: "Vehicle & Driver Details" });
+        XLSX.writeFile(wb, "vehicle-driver-details.xlsx");
+      };
+    });
+  </script>
+
+  <script>
+    
+    fetch("navbar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("navbar").innerHTML = html;
+    });
+
+    window.toggleMenu = function () {
+      document.getElementById("navLinks").classList.toggle("show");
+    };
+  </script>
+</body>
+</html>

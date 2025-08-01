@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Trip Expenses Manager</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <script src="https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs" type="module"></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background-color: #F5F5F5;
+      margin: 0;
+      padding: 0;
+    }
+
+    .container {
+      max-width: 1000px;
+      margin: 20px auto;
+      background-color: #fff;
+      padding: 20px;
+      border-radius: 10px;
+      box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+    }
+
+    .container h1 {
+      text-align: center;
+      color: #2E8B57;
+    }
+
+    .form-group {
+      margin-bottom: 15px;
+    }
+
+    .form-group label {
+      display: block;
+      margin-bottom: 5px;
+      color: #333;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 8px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 5px;
+    }
+
+    button {
+      padding: 10px 20px;
+      background-color: #2E8B57;
+      color: white;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      margin-right: 10px;
+    }
+
+    button:hover {
+      background-color: #43B97F;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 20px;
+    }
+
+    table th,
+    table td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: left;
+    }
+
+    table th {
+      background-color: #2E8B57;
+      color: white;
+    }
+
+    .actions button {
+      margin: 0 2px;
+      padding: 5px 10px;
+    }
+  </style>
+</head>
+
+<body>
+  <div id="navbar"></div>
+  <div class="container">
+    <h1>Trip Expenses Manager</h1>
+
+    <div class="form-group">
+      <label for="vehicle">Vehicle Number</label>
+      <input type="text" id="vehicle" placeholder="Enter vehicle number" required />
+    </div>
+    <div class="form-group">
+      <label for="driver">Driver Name</label>
+      <input type="text" id="driver" placeholder="Enter driver name" required />
+    </div>
+    <div class="form-group">
+      <label for="date">Date</label>
+      <input type="date" id="date" required />
+    </div>
+    <div class="form-group">
+      <label for="tyre">Tyre Expense</label>
+      <input type="number" id="tyre" placeholder="Enter tyre expense" />
+    </div>
+    <div class="form-group">
+      <label for="diesel">Diesel Expense</label>
+      <input type="number" id="diesel" placeholder="Enter diesel expense" />
+    </div>
+
+    <div class="form-group">
+      <label for="advance">Advance paid</label>
+      <input type="number" id="advance" placeholder="Advance paid " />
+    </div>
+    <div class="form-group">
+      <label for="toll">Toll Paid</label>
+      <input type="number" id="toll" placeholder="Enter Toll paid" />
+    </div>
+
+    <div class="form-group">
+      <label for="vehicler">vehicle Work</label>
+      <input type="number" id="vehicler" placeholder="Any vehicle work" />
+    </div>
+
+    <div class="form-group">
+      <label for="other">Other expenses</label>
+      <input type="number" id="other" placeholder="Other expenses" />
+    </div>
+
+    <div class="form-group">
+      <label for="food">food expenses</label>
+      <input type="number" id="food" placeholder="For food" />
+    </div>
+
+    <div class="form-group">
+      <label for="gain">Amount Get Form this Trip</label>
+      <input type="number" id="gain" placeholder="Amount Get" />
+    </div>
+    <hr>
+    <div>
+
+      <button onclick="addTripExpense()">Add Trip Expense</button>
+      <button onclick="exportToExcel()">Download Excel</button>
+      <input type="text" id="searchInput" placeholder="Search by vehicle, route, or anything..." style="padding: 8px; width: 100%; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc;">
+
+    </div>
+    <table id="expensesTable">
+      <thead>
+        <tr>
+          <th>Vehicle No</th>
+          <th>Driver</th>
+          <th>Date</th>
+          <th>Tyre</th>
+          <th>Diesel</th>
+          <th>Advance</th>
+          <th>Toll</th>
+          <th>vehicle</th>
+          <th>other</th>
+          <th>Food</th>
+          <th>Total</th>
+          <th>Gain</th>
+          <th>Profit</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody></tbody>
+    </table>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, push, set, onValue, remove, update } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+    import * as XLSX from "https://cdn.sheetjs.com/xlsx-0.20.0/package/xlsx.mjs";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDAlk_K8p8Of8Ne6Jpcl2QqXTtm95NgG7o",
+      authDomain: "transport-dashboard-ad69a.firebaseapp.com",
+      databaseURL: "https://transport-dashboard-ad69a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "transport-dashboard-ad69a",
+      storageBucket: "transport-dashboard-ad69a.appspot.com",
+      messagingSenderId: "526889676196",
+      appId: "1:526889676196:web:66032c80a4aede690ae531"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase();
+    const auth = getAuth();
+
+    let currentUser = null;
+
+    onAuthStateChanged(auth, (user) => {
+      if (user) {
+        currentUser = user;
+        fetchData();
+      } else {
+        window.location.href = "index.html";
+      }
+
+      window.logout = function() {
+        signOut(auth).then(() => {
+          window.location.href = "index.html";
+        }).catch(error => {
+          alert("Error logging out: " + error.message);
+        });
+      };
+      
+      // Add toggle menu functionality
+      window.toggleMenu = function() {
+        document.getElementById("navLinks").classList.toggle("show");
+      };
+    });
+
+    window.addTripExpense = function () {
+      const vehicle = document.getElementById("vehicle").value.trim();
+      const driver = document.getElementById("driver").value.trim();
+      const date = document.getElementById("date").value;
+      const tyre = parseFloat(document.getElementById("tyre").value || 0);
+      const diesel = parseFloat(document.getElementById("diesel").value || 0);
+      const advance = parseFloat(document.getElementById("advance").value || 0);
+      const toll = parseFloat(document.getElementById("toll").value || 0);
+      const vehicler = parseFloat(document.getElementById("vehicler").value || 0);
+      const other = parseFloat(document.getElementById("other").value || 0);
+      const food = parseFloat(document.getElementById("food").value || 0);
+
+      if (!vehicle || !driver || !date) return alert("Please fill all required fields");
+
+      const total = tyre + diesel + advance + toll + vehicler + other + food;
+      const gain = parseFloat(document.getElementById("gain").value || 0);
+      const profitt = gain - total;
+      const newRef = push(ref(db, `users/${currentUser.uid}/tripExpenses`));
+
+      set(newRef, {
+        vehicle,
+        driver,
+        date,
+        tyre,
+        diesel,
+        advance,
+        toll,
+        vehicler,
+        other,
+        food,
+        total,
+        gain,
+        profitt
+      });
+    };
+
+    function fetchData() {
+      const tbody = document.querySelector("#expensesTable tbody");
+      onValue(ref(db, `users/${currentUser.uid}/tripExpenses`), (snapshot) => {
+        tbody.innerHTML = "";
+        snapshot.forEach((child) => {
+          const data = child.val();
+          const key = child.key;
+
+          const row = document.createElement("tr");
+          row.innerHTML = `
+            <td>${data.vehicle}</td>
+            <td>${data.driver}</td>
+            <td>${data.date}</td>
+            <td>${data.tyre}</td>
+            <td>${data.diesel}</td>
+            <td>${data.advance}</td>
+            <td>${data.toll}</td>
+            <td>${data.vehicler}</td>
+            <td>${data.other}</td>
+            <td>${data.food}</td>
+            <td>${data.total}</td>
+            <td>${data.gain}</td>
+            <td>${data.profitt}</td>
+            <td class="actions">
+              <button onclick="editExpense('${key}')">Edit</button>
+              <button onclick="deleteExpense('${key}')">Delete</button>
+            </td>
+          `;
+          tbody.appendChild(row);
+        });
+      });
+    }
+
+    window.deleteExpense = function (key) {
+      remove(ref(db, `users/${currentUser.uid}/tripExpenses/${key}`));
+    };
+
+    window.editExpense = function (key) {
+      const row = document.querySelector(`button[onclick="editExpense('${key}')"]`).closest("tr");
+      const cells = row.querySelectorAll("td");
+      document.getElementById("vehicle").value = cells[0].textContent;
+      document.getElementById("driver").value = cells[1].textContent;
+      document.getElementById("date").value = cells[2].textContent;
+      document.getElementById("tyre").value = cells[3].textContent;
+      document.getElementById("diesel").value = cells[4].textContent;
+      document.getElementById("advance").value = cells[5].textContent;
+      document.getElementById("toll").value = cells[6].textContent;
+      document.getElementById("vehicler").value = cells[7].textContent;
+      document.getElementById("other").value = cells[8].textContent;
+      document.getElementById("food").value = cells[9].textContent;
+      document.getElementById("gain").value = cells[11].textContent;
+      deleteExpense(key);
+    };
+
+    document.getElementById("searchInput").addEventListener("input", function () {
+      const query = this.value.toLowerCase();
+      const rows = document.querySelectorAll("#expensesTable tbody tr");
+
+      rows.forEach(row => {
+        const text = row.textContent.toLowerCase();
+        row.style.display = text.includes(query) ? "" : "none";
+      });
+    });
+
+
+    window.exportToExcel = function () {
+      const table = document.getElementById("expensesTable");
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.table_to_sheet(table);
+      XLSX.utils.book_append_sheet(wb, ws, "Trip Expenses");
+      XLSX.writeFile(wb, "TripExpenses.xlsx");
+    };
+    
+  </script>
+  <script>
+    // Load navbar
+    fetch("navbar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("navbar").innerHTML = html;
+    });
+  </script>
+</body>
+
+</html>

@@ -1,0 +1,297 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Route Details</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: #f5f9ff;
+      padding: 20px;
+      margin: 0;
+    }
+    .container h1 {
+      text-align: center;
+      color: #2c3e50;
+    }
+    .container {
+      max-width: 1200px;
+      margin: auto;
+    }
+    form {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 15px;
+      background: #fff;
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    form input, form button {
+      padding: 10px;
+      border: 1px solid #ccc;
+      border-radius: 8px;
+      font-size: 14px;
+    }
+    form button {
+      background: #27ae60;
+      color: #fff;
+      border: none;
+      cursor: pointer;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+    .controls input, .controls button {
+      padding: 8px 12px;
+      margin: 5px;
+      border-radius: 6px;
+      font-size: 14px;
+    }
+    .controls button {
+      background-color: #43B97F;
+      color: white;
+      border: none;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      background: #fff;
+      border-radius: 8px;
+      overflow: hidden;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.1);
+    }
+    table th, table td {
+      padding: 12px;
+      text-align: left;
+      border-bottom: 1px solid #eee;
+    }
+    table th {
+      background: #2E8B57;
+      color: white;
+    }
+    table button {
+      padding: 4px 8px;
+      font-size: 12px;
+      border: none;
+      border-radius: 5px;
+      margin: 2px;
+      cursor: pointer;
+    }
+    .edit-btn {
+      background: #f1c40f;
+      color: #fff;
+    }
+    .delete-btn {
+      background: #e74c3c;
+      color: #fff;
+    }
+    .pdf-btn {
+      background: #2ecc71;
+      color: #fff;
+    }
+
+    @media(max-width: 600px) {
+      form {
+        grid-template-columns: 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+  <div id="navbar"></div>
+  <div class="container">
+    <h1>Route Details</h1>
+
+    <form id="routeForm">
+      <input type="text" id="vehicleNumber" placeholder="Vehicle Number" required>
+      <input type="text" id="routeFrom" placeholder="From" required>
+      <input type="text" id="routeTo" placeholder="To" required>
+      <input type="date" id="routeDate" required>
+      <button type="submit">Add Route</button>
+    </form>
+
+    <div class="controls">
+      <input type="text" id="searchInput" placeholder="Search...">
+      <button id="sortDateBtn">Sort by Date</button>
+      <button id="exportExcelBtn">Export to Excel</button>
+    </div>
+
+    <table id="routeTable">
+      <thead>
+        <tr>
+          <th>Vehicle Number</th>
+          <th>From</th>
+          <th>To</th>
+          <th>Date</th>
+          <th>Actions</th>
+        </tr>
+      </thead>
+      <tbody id="routeBody"></tbody>
+    </table>
+  </div>
+
+  <!-- XLSX Library -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+  <!-- jsPDF -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+
+  <!-- Firebase -->
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-app.js";
+    import { getDatabase, ref, push, onValue, remove, set } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-database.js";
+    import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+
+    const firebaseConfig = {
+      apiKey: "AIzaSyDAlk_K8p8Of8Ne6Jpcl2QqXTtm95NgG7o",
+      authDomain: "transport-dashboard-ad69a.firebaseapp.com",
+      databaseURL: "https://transport-dashboard-ad69a-default-rtdb.asia-southeast1.firebasedatabase.app",
+      projectId: "transport-dashboard-ad69a",
+      storageBucket: "transport-dashboard-ad69a.appspot.com",
+      messagingSenderId: "526889676196",
+      appId: "1:526889676196:web:66032c80a4aede690ae531",
+      measurementId: "G-7F9R7HJYDH"
+    };
+
+    const app = initializeApp(firebaseConfig);
+    const db = getDatabase(app);
+    const auth = getAuth(app);
+
+    const routeForm = document.getElementById("routeForm");
+    const routeBody = document.getElementById("routeBody");
+    const searchInput = document.getElementById("searchInput");
+    const exportExcelBtn = document.getElementById("exportExcelBtn");
+    const sortDateBtn = document.getElementById("sortDateBtn");
+
+    let routeList = [];
+    let currentUserId = "";
+
+    onAuthStateChanged(auth, (user) => {
+      if (!user) {
+        window.location.href = "index.html";
+      } else {
+        currentUserId = user.uid;
+        fetchRoutes();
+      }
+      window.logout = function() {
+        signOut(auth).then(() => {
+          window.location.href = "index.html";
+        }).catch(error => {
+          alert("Error logging out: " + error.message);
+        });
+      };
+    });
+
+    routeForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      const vehicleNumber = routeForm.vehicleNumber.value.trim();
+      const routeFrom = routeForm.routeFrom.value.trim();
+      const routeTo = routeForm.routeTo.value.trim();
+      const routeDate = routeForm.routeDate.value;
+
+      const newRef = push(ref(db, `users/${currentUserId}/routes`));
+      set(newRef, { vehicleNumber, routeFrom, routeTo, routeDate });
+      routeForm.reset();
+    });
+
+    function fetchRoutes() {
+      const routesRef = ref(db, `users/${currentUserId}/routes`);
+      onValue(routesRef, (snapshot) => {
+        routeList = [];
+        routeBody.innerHTML = "";
+        snapshot.forEach(child => {
+          const data = child.val();
+          routeList.push({ id: child.key, ...data });
+        });
+        renderTable(routeList);
+      });
+    }
+
+    function renderTable(data) {
+      routeBody.innerHTML = "";
+      data.forEach(item => {
+        const tr = document.createElement("tr");
+        tr.innerHTML = `
+          <td>${item.vehicleNumber}</td>
+          <td>${item.routeFrom}</td>
+          <td>${item.routeTo}</td>
+          <td>${item.routeDate}</td>
+          <td>
+            <button class="edit-btn" onclick="editRoute('${item.id}')">Edit</button>
+            <button class="delete-btn" onclick="deleteRoute('${item.id}')">Delete</button>
+            <button class="pdf-btn" onclick="downloadPDF('${item.vehicleNumber}', '${item.routeFrom}', '${item.routeTo}', '${item.routeDate}')">PDF</button>
+          </td>
+        `;
+        routeBody.appendChild(tr);
+      });
+    }
+
+    window.editRoute = (id) => {
+      const item = routeList.find(i => i.id === id);
+      if (item) {
+        routeForm.vehicleNumber.value = item.vehicleNumber;
+        routeForm.routeFrom.value = item.routeFrom;
+        routeForm.routeTo.value = item.routeTo;
+        routeForm.routeDate.value = item.routeDate;
+
+        deleteRoute(id); // remove old one so edited is saved fresh
+      }
+    };
+
+    window.deleteRoute = (id) => {
+      remove(ref(db, `users/${currentUserId}/routes/${id}`));
+    };
+
+    window.downloadPDF = (vehicle, from, to, date) => {
+      const { jsPDF } = window.jspdf;
+      const doc = new jsPDF();
+      doc.setFontSize(16);
+      doc.text("Route Details", 20, 20);
+      doc.setFontSize(12);
+      doc.text(`Vehicle Number: ${vehicle}`, 20, 40);
+      doc.text(`Route From: ${from}`, 20, 50);
+      doc.text(`Route To: ${to}`, 20, 60);
+      doc.text(`Date: ${date}`, 20, 70);
+      doc.save(`${vehicle}_route.pdf`);
+    };
+
+    searchInput.addEventListener("input", () => {
+      const query = searchInput.value.toLowerCase();
+      const filtered = routeList.filter(item =>
+        item.vehicleNumber.toLowerCase().includes(query) ||
+        item.routeFrom.toLowerCase().includes(query) ||
+        item.routeTo.toLowerCase().includes(query)
+      );
+      renderTable(filtered);
+    });
+
+    sortDateBtn.addEventListener("click", () => {
+      const sorted = [...routeList].sort((a, b) => new Date(a.routeDate) - new Date(b.routeDate));
+      renderTable(sorted);
+    });
+
+    exportExcelBtn.addEventListener("click", () => {
+      const table = document.getElementById("routeTable");
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.table_to_sheet(table);
+      XLSX.utils.book_append_sheet(wb, ws, "Routes");
+      XLSX.writeFile(wb, "route_data.xlsx");
+    });
+  </script>
+  <script>
+    fetch("navbar.html")
+      .then(res => res.text())
+      .then(html => {
+        document.getElementById("navbar").innerHTML = html;
+    });
+    window.toggleMenu = function () {
+        document.getElementById("navLinks").classList.toggle("show");
+    };
+  </script>
+</body>
+</html>
